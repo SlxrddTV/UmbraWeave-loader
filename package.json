@@ -14,11 +14,20 @@
   "build": {
     "appId": "com.umbra.weave",
     "productName": "UmbraWeave",
-    "author": "UmbraClient",
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "assets/icon.ico",
       "executableName": "UmbraWeave",
@@ -31,7 +40,14 @@
       "uninstallerIcon": "assets/icon.ico",
       "installerHeaderIcon": "assets/icon.ico"
     },
-    "files": ["**/*", "!node_modules/.cache/**"],
-    "asarUnpack": ["logo/**"]
-  }
+    "files": [
+      "**/*",
+      "!node_modules/.cache/**"
+    ],
+    "asarUnpack": [
+      "logo/**"
+    ]
+  },
+  "author": "Slxrdd",
+  "description": "Weave mod manager for Lunar Client"
 }
