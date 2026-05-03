@@ -39,8 +39,8 @@ app.whenReady().then(() => {
   tray.on('click', () => win?.show())
 })
 
-app.on('window-all-closed', () => {})
-ipcMain.on('close-app', () => win?.hide())
+app.on('window-all-closed', () => { app.quit() })
+ipcMain.on('close-app', () => { if (win) { win.destroy(); win = null } app.quit() })
 ipcMain.on('minimize-app', () => win?.minimize())
 
 // Ouvrir le dossier mods dans l'explorateur
