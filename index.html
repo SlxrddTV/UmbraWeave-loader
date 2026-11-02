@@ -158,6 +158,29 @@
     }
     .mod-row:last-child { border-bottom: none; }
     .mod-row:hover { background: #111; }
+    .mod-row.disabled { opacity: .55; }
+    .mod-row.disabled .mod-icon { opacity: .5; }
+    .mod-row.disabled .mod-name { color: #666; }
+    .mod-badge {
+      font-size: 9px;
+      color: #666;
+      letter-spacing: .5px;
+      margin-top: 2px;
+    }
+
+    .mod-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .toggle-btn {
+      background: none;
+      border: 1px solid #1e1e1e;
+      border-radius: 6px;
+      color: #444;
+      font-size: 11px;
+      padding: 4px 8px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .toggle-btn:hover { border-color: #f39c12; color: #f39c12; }
+    .toggle-btn.on:hover { border-color: #2ecc71; color: #2ecc71; }
 
     .mod-icon {
       width: 32px; height: 32px;
@@ -229,6 +252,29 @@
     }
     .launch-btn:active { transform: scale(.97); }
     .launch-btn:disabled { background: #1a1a1a; color: #444; cursor: not-allowed; box-shadow: none; transform: none; }
+    .launch-stack {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .launch-btn.secondary {
+      background: #151515;
+      border: 1px solid #2a2444;
+      color: #cfc8ff;
+      box-shadow: none;
+    }
+    .launch-btn.secondary:hover {
+      background: #1c1930;
+      border-color: #7c5cfc;
+      box-shadow: 0 4px 18px rgba(124,92,252,.18);
+    }
+    .launch-btn.secondary:disabled {
+      background: #121212;
+      border-color: #1b1b1b;
+      color: #444;
+    }
 
     .spinner {
       width: 14px; height: 14px;
@@ -299,10 +345,16 @@
       </div>
     </div>
 
-    <button class="launch-btn" id="launch-btn" onclick="launchWeave()">
-      <div class="spinner" id="launch-spinner"></div>
-      <span class="btn-label">LOAD WEAVE</span>
-    </button>
+    <div class="launch-stack">
+      <button class="launch-btn" id="launch-btn" onclick="launchWeave()">
+        <div class="spinner" id="launch-spinner"></div>
+        <span class="btn-label">LOAD WEAVE</span>
+      </button>
+      <button class="launch-btn secondary" id="launch-lunar-btn" onclick="launchLunarWeave()">
+        <div class="spinner" id="launch-lunar-spinner"></div>
+        <span class="btn-label">LOAD LUNAR+WEAVE</span>
+      </button>
+    </div>
 
     <div class="status-bar" id="status"></div>
   </div>
@@ -343,29 +395,86 @@
       }
     }
 
+    function createModRow(mod) {
+      const row = document.createElement('div')
+      row.className = 'mod-row' + (mod.enabled ? '' : ' disabled')
+
+      const icon = document.createElement('div')
+      icon.className = 'mod-icon'
+      icon.textContent = mod.enabled ? '⚡' : '○'
+
+      const info = document.createElement('div')
+      info.className = 'mod-info'
+
+      const name = document.createElement('div')
+      name.className = 'mod-name'
+      name.textContent = mod.name
+
+      const size = document.createElement('div')
+      size.className = 'mod-size'
+      size.textContent = fmtSize(mod.size)
+      info.append(name, size)
+
+      if (!mod.enabled) {
+        const badge = document.createElement('div')
+        badge.className = 'mod-badge'
+        badge.textContent = 'Disabled'
+        info.append(badge)
+      }
+
+      const actions = document.createElement('div')
+      actions.className = 'mod-actions'
+
+      const toggleButton = document.createElement('button')
+      toggleButton.type = 'button'
+      toggleButton.className = mod.enabled ? 'toggle-btn on' : 'toggle-btn'
+      toggleButton.title = mod.enabled ? 'Disable mod' : 'Enable mod'
+      toggleButton.setAttribute('aria-label', toggleButton.title)
+      toggleButton.textContent = mod.enabled ? '⏸' : '▶'
+      toggleButton.addEventListener('click', () => toggleMod(mod.name, mod.enabled, mod.legacy))
+
+      const deleteButton = document.createElement('button')
+      deleteButton.type = 'button'
+      deleteButton.className = 'del-btn'
+      deleteButton.title = 'Delete mod'
+      deleteButton.setAttribute('aria-label', 'Delete ' + mod.name)
+      deleteButton.textContent = '✕'
+      deleteButton.addEventListener('click', () => deleteMod(mod.name, mod.enabled, mod.legacy))
+
+      actions.append(toggleButton, deleteButton)
+      row.append(icon, info, actions)
+      return row
+    }
+
     async function refreshMods() {
       const list = document.getElementById('mods-list')
       const mods = await _ipc.invoke('list-mods')
       if (!mods.length) {
+        list.replaceChildren()
         list.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-text">No mods found in .weave/mods</div></div>'
         setStatus('Drop .jar files in .weave/mods to add mods', '')
         return
       }
-      list.innerHTML = mods.map(m => `
-        <div class="mod-row">
-          <div class="mod-icon">⚡</div>
-          <div class="mod-info">
-            <div class="mod-name">${m.name}</div>
-            <div class="mod-size">${fmtSize(m.size)}</div>
-          </div>
-          <button class="del-btn" onclick="deleteMod('${m.name.replace(/'/g, "\\'")}')">✕</button>
-        </div>
-      `).join('')
-      setStatus(mods.length + ' mod' + (mods.length > 1 ? 's' : '') + ' loaded', 'ok')
+      list.replaceChildren(...mods.map(createModRow))
+      const active = mods.filter(mod => mod.enabled).length
+      const disabled = mods.length - active
+      let status = active + ' active'
+      if (disabled) status += ', ' + disabled + ' disabled'
+      setStatus(status, 'ok')
     }
 
-    async function deleteMod(name) {
-      const ok = await _ipc.invoke('delete-mod', name)
+    async function toggleMod(name, currentlyEnabled, legacy) {
+      const ok = await _ipc.invoke('toggle-mod', name, !currentlyEnabled, legacy)
+      if (ok) {
+        setStatus(name + (currentlyEnabled ? ' disabled' : ' enabled'), 'info')
+        await refreshMods()
+      } else {
+        setStatus('Could not update mod', 'err')
+      }
+    }
+
+    async function deleteMod(name, enabled, legacy) {
+      const ok = await _ipc.invoke('delete-mod', name, enabled, legacy)
       if (ok) {
         setStatus(name + ' removed', 'info')
         await refreshMods()
@@ -379,28 +488,54 @@
       setStatus('Folder opened in Explorer', 'info')
     }
 
+    function setLaunchLoading(buttonId, spinnerId, loading) {
+      const btn = document.getElementById(buttonId)
+      const spinner = document.getElementById(spinnerId)
+      btn.disabled = loading
+      btn.classList.toggle('btn-loading', loading)
+      spinner.style.display = loading ? 'block' : 'none'
+    }
+
     async function launchWeave() {
-      const btn = document.getElementById('launch-btn')
-      const spinner = document.getElementById('launch-spinner')
-      btn.disabled = true
-      btn.classList.add('btn-loading')
-      spinner.style.display = 'block'
+      setLaunchLoading('launch-btn', 'launch-spinner', true)
       setStatus('Launching Lunar with Weave...', 'info')
       try {
         const result = await _ipc.invoke('launch-weave')
         if (result.ok) {
-          setStatus('Lunar launched!', 'ok')
+          setStatus('Lunar restarted with Weave.', 'ok')
         } else {
           setStatus(result.error || 'Launch failed', 'err')
         }
       } catch (e) {
         setStatus('Error: ' + e.message, 'err')
       } finally {
-        btn.disabled = false
-        btn.classList.remove('btn-loading')
-        spinner.style.display = 'none'
+        setLaunchLoading('launch-btn', 'launch-spinner', false)
       }
     }
+
+    async function launchLunarWeave() {
+      setLaunchLoading('launch-lunar-btn', 'launch-lunar-spinner', true)
+      setStatus('Launching another Lunar + Weave instance...', 'info')
+      try {
+        const result = await _ipc.invoke('launch-lunar-weave')
+        if (result.ok) {
+          setStatus('Another Lunar + Weave instance launched.', 'ok')
+        } else {
+          setStatus(result.error || 'Launch failed', 'err')
+        }
+      } catch (e) {
+        setStatus('Error: ' + e.message, 'err')
+      } finally {
+        setLaunchLoading('launch-lunar-btn', 'launch-lunar-spinner', false)
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F5') {
+        e.preventDefault()
+        refreshMods()
+      }
+    })
 
     ;(async () => {
       await checkWeaveAgent()

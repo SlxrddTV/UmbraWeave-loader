@@ -22,9 +22,10 @@ UmbraWeave is a free, open-use Electron-based launcher that simplifies loading W
 ### Features
 
 - Load any `weave-agent.jar` directly from your filesystem
-- Visual mod manager — lists all `.jar` files in `~/.weave/mods/`
+- Visual mod manager — enable and disable mods in `~/.weave/mods/` by renaming disabled JARs with a `.disabled` suffix
 - Open the mods folder in Explorer with one click
 - Remove mods from the UI
+- Launch an additional Lunar + Weave instance without stopping the current one
 - Relaunch Lunar Client with the Weave agent injected — one click
 
 ---
@@ -87,7 +88,10 @@ Or click **📂 Open folder** to open this directory directly in Windows Explore
 1. Start Lunar Client normally and wait for it to fully load
 2. Click **LOAD WEAVE** in UmbraWeave
 3. The launcher will find Lunar, stop it, and relaunch it with the Weave agent attached
-4. Your mods will be active on the next game session
+4. After Lunar has restarted, click **LOAD LUNAR+WEAVE** to start another instance without stopping the running one
+5. Your mods will be active on the next game session
+
+Disabled mods stay in `~/.weave/mods/` as `name.jar.disabled` and are restored to `name.jar` when enabled again. Mods disabled by older versions in `~/.weave/mods-disabled/` remain visible and are moved back when re-enabled.
 
 ---
 
